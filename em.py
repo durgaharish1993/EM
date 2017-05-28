@@ -1,224 +1,99 @@
+from __future__ import division
+import math
 from collections import defaultdict
-import numpy as np
+import sys
 
 
+def align(rem_short, rem_long, limit):
+    if rem_short == 1:
+        return [rem_long]
 
+    min_map_cnt = max([0, int(math.ceil(rem_long/(rem_short-1)) - limit)])
+    max_map_cnt = min([limit, rem_long])
 
-
-
-def alignments(epron,jpron):
-    #epron = ['W']
-    #jpron = ['W','A','D']
-    alings = []
-
-    def all_alignments(alings,cur_e=0,start_j=0):
-        if cur_e >= len(epron) and start_j >= len(jpron):
-            return [[]]
-
-        if cur_e>=len(epron) and start_j<len(jpron):
-            return [['None']]
-        if cur_e<len(epron) and start_j>=len(jpron):
-            return [['None']]
-
-
-        temp_align=[]
-        for j in range(start_j,start_j+3):
-            if j< len(jpron):
-
-                cur_align = [cur_e]* (j-start_j+1)
-
-                result_align = all_alignments(alings,cur_e+1,j+1)
-                for temp in result_align:
-                    if temp!=['None']:
-                        temp_align+=[cur_align+temp]
-        return temp_align
-
-    final_data = all_alignments(alings, 0, 0)
-
-    final_dict={i:final_data[i] for i in range(len(final_data))}
-    return final_dict
-
-
-
-
-
-
-def e_step(train_data,all_z,fractional_counts,iter,soft=True):
-    align_prob = defaultdict(lambda: defaultdict(float))
-
-    for index in all_z:
-        e_pron = train_data[index][0].split()
-        j_pron = train_data[index][1].split()
-        for key,z in all_z[index].items():
-            z = np.array(z)
-            for i,esym in enumerate(e_pron):
-                indexes = np.where(z==i)[0]
-                jsym=' '.join([j_pron[j] for j in indexes])
-                align_prob[esym][jsym]+=fractional_counts[index][key]
-
-
-    for esym in align_prob:
-        sum_val = sum(align_prob[esym].values())
-        for k,v in align_prob[esym].items():
-            updated_value  = v/sum_val
-            #if updated_value>=0.001:
-            align_prob[esym][k]= updated_value#.update(k,updated_value)
-            #else:
-            #    align_prob[esym][k]=0#.update(k,0)
-
-        #align_prob[esym].update((k,v/sum_val) for k,v in align_prob[esym].items())
-
-    return align_prob
-
-
-
-
-
-def m_step(align_prob,all_z,train_data):
-    joint_prob = defaultdict(lambda : defaultdict(float))
-    for index in all_z:
-        e_pron = train_data[index][0].split()
-        j_pron = train_data[index][1].split()
-        for key,z in all_z[index].items():
-            z = np.array(z)
-            prob=1
-            for i,esym in enumerate(e_pron):
-                indexes = np.where(z==i)[0]
-                jsym=' '.join([j_pron[j] for j in indexes])
-                prob*=align_prob[esym][jsym]
-            joint_prob[index][key]= prob
-    return joint_prob
-
-
-
-
-def get_corpus_prob(align_prob,all_z,train_data):
-    total_prob = 0
-    for t_index in all_z:
-
-        e_pron = train_data[t_index][0].split()
-        j_pron = train_data[t_index][1].split()
-
-        for key,z in all_z[t_index].items():
-            z = np.array(z)
-            prob=1
-            for i,esym in enumerate(e_pron):
-                indexes = np.where(z==i)[0]
-                jsym=' '.join([j_pron[j] for j in indexes])
-                prob*=align_prob[esym][jsym]
-            total_prob+=prob
-    return total_prob
-
-
-
-
-
-
-
-
-def fractional_count_update(joint_prob,fractional_counts):
-    for t_index in joint_prob:
-        sum_val = sum(joint_prob[t_index].values())
-        for key in joint_prob[t_index]:
-            fractional_counts[t_index][key]=joint_prob[t_index][key]/sum_val
-#fractional_counts[t_index].update((k,v/sum_val) for k,v in joint_prob[t_index].items())
-    return fractional_counts
-
-
-
-
-
-
-
-
-
-
-
-
-def read_data(file_name):
-    train_data=[]
-    fp = open(file_name)
-    count=0
-    ep_bin=True
-    for line in fp.readlines():
-        count+=1
-        if count%3==0:
-            train_data+=[(ep,jp)]
-            ep_bin=True
-            continue
-
-        if ep_bin==True:
-            ep = line
-            ep_bin=False
+    out = []
+    for m in xrange(min_map_cnt, max_map_cnt+1):
+        a = align(rem_short-1, rem_long-m, limit)
+        if isinstance(a[0], list):
+            out += [[m] + x for x in a]
         else:
-            jp=line
-            ep_bin=True
-
-    return train_data
+            out += [[m] + [x] for x in a]
+    return out
 
 
 
+def gen_legal_alignments(seq1, seq2, max_sub_size = 3):
+    if (len(seq2) - len(seq1)) / len(seq1) > max_sub_size-1:
+        return None    
+    ex =  align(len(seq1), len(seq2) - len(seq1), max_sub_size-1)            
+    aligned_indices = [[x+1 for x in (ex[i])] for i in xrange(len(ex))]        
+    mappings = defaultdict(lambda: defaultdict(list))
+    all_alignments = []
+    for e in aligned_indices:
+        idx = 0
+        alignment = []
+        for i in xrange(len(seq1)):
+            sub_seq2 = ' '.join(seq2[idx:idx+e[i]])
+            mappings[seq1[i]][sub_seq2]+=[len(all_alignments)]        
+            alignment += [sub_seq2]
+            idx += e[i]
+        all_alignments += [alignment]
+    
+    return all_alignments, mappings
+        
+def em(english, katakana, max_iter = 100):
+    # if len(english) != len(katakana):
+    #     return -1
+    
+    #initialization
+    alignments, mappings = gen_legal_alignments(english, katakana)
+    prob_table = defaultdict(lambda: defaultdict(float))
+    for ep in mappings:
+        for jp in mappings[ep]:
+            prob_table[ep][jp] = 1/len(mappings[ep])    
+    
+    for iteration in xrange(max_iter):
+        #E-step
+        p_x_z = defaultdict(float)
+        p_x = 0.0
+        for al_idx,alg in enumerate(alignments):
+            p_x_z[al_idx] = 1.0        
+            for ix, jp in enumerate(alg):                                
+                p_x_z[al_idx] *= prob_table[english[ix]][jp]
+            p_x += p_x_z[al_idx]
+        
+        #renormalized to get fraccount
+        for al_idx,alg in enumerate(alignments):                        
+            p_x_z[al_idx] = p_x_z[al_idx]/p_x
+
+        #M-step
+        for ep in prob_table:
+            for jp in prob_table[ep]:
+                new_prob = 0.0
+                for al_idx in mappings[ep][jp]:
+                    new_prob += p_x_z[al_idx]
+                prob_table[ep][jp] = new_prob
+
+        print 'iteration {0} ----- corpus prob = {1}'.format(iteration,p_x)
+        non_zeros = 0
+        for ep in prob_table:
+            m = ep+'|->\t'
+            for jp in prob_table[ep]:
+                if prob_table[ep][jp] > 0.000001:
+                    non_zeros += 1
+                    m += '{0}: {1:.2f}\t'.format(jp, prob_table[ep][jp])
+            print m
+        print 'nonzeros = {0}'.format(non_zeros)
+        if non_zeros == len(prob_table):
+            break
+
+
+if __name__ == '__main__':
+    arg = sys.argv
+    print arg
+    if len(arg) > 1:
+        max_iter = int(arg[1])
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-if __name__=='__main__':
-    file_name = 'epron-jpron.data'
-    iterations =5
-
-
-    #train_data = [('T EH S T','T E S U T O')]
-
-
-    train_data=read_data(file_name)
-    #train_data = [('B IY', 'B I I')]
-    ###initalization
-    align_prob = defaultdict(lambda: defaultdict(lambda :1))
-
-    fractional_counts = defaultdict(lambda : defaultdict(float))
-    all_z = {}
-    for i in range(len(train_data)):
-        all_z[i] = alignments(train_data[i][0].split(), train_data[i][1].split())
-        for key in all_z[i]:
-            fractional_counts[i][key]=1
-
-
-
-
-
-    for i in range(iterations):
-        #(train_data,align_prob,all_z,fractional_counts,soft=True)
-        corpus_prob = get_corpus_prob(align_prob, all_z, train_data)
-        print('iteration ', i, ' ----- corpus prob=', corpus_prob)
-        align_prob=e_step(train_data,all_z,fractional_counts,i,soft=True)
-
-        ##########
-
-        count=0
-        for key in align_prob:
-            print(key, '|->', end=' ')
-            for key1 in align_prob[key]:
-                if align_prob[key][key1]>0:
-                    count+=1
-                    print(key1, ':', align_prob[key][key1], end=' ')
-            print('\n')
-        print('nonzeros =',count)
-        ###########
-        joint_prob = m_step(align_prob, all_z, train_data)
-        fractional_counts=fractional_count_update(joint_prob,fractional_counts)
-        #print('i am here')
+    em(['W', 'AY', 'N'],['W', 'A', 'I', 'N'], max_iter)
