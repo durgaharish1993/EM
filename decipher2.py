@@ -167,8 +167,13 @@ def estimating_state_transtion_count(alpha,beta,vocab,transition_prob,emission_p
         cur_states = alpha[t+1].keys()
         for prev_h in prev_states:
             for cur_h in cur_states:
-                eplison[t][prev_h][cur_h] = ((alpha[t][prev_h]) * (transition_prob[prev_h][cur_h]*emission_prob[cur_h][observed_data[t+1]]) * (beta[t+1][cur_h]))/normalize
+                if observed_data[t+1]!=end_symbol:
+                    eplison[t][prev_h][cur_h] = ((alpha[t][prev_h]) * (transition_prob[prev_h][cur_h]*emission_prob[cur_h][observed_data[t+1]]) * (beta[t+1][cur_h]))/normalize
+                else:
+                    eplison[t][prev_h][cur_h] = ((alpha[t][prev_h]) * (transition_prob[prev_h][cur_h]) * (beta[t + 1][cur_h])) / normalize
 
+
+    #print('dkfjdkfjdk')
 
     return eplison
 
@@ -219,7 +224,7 @@ def EM_step(transition_prob,emission_prob,observed_data,vocab):
     transition_count = estimating_state_transtion_count(alpha,beta,vocab,transition_prob,emission_prob,observed_data)
     occupancy_count = estimating_occupancy_count(alpha,beta,vocab,transition_prob,emission_prob,observed_data)
 
-
+    #print('kdjfkdjfkdjfkjkdfd')
 
     return transition_count, occupancy_count
 
@@ -273,7 +278,7 @@ def Max_step(transition_count,occupancy_count,observed_data,vocab):
             updated_emission_prob[cur_h][o] = updated_emission_prob[cur_h][o]/sum_prob[cur_h]
 
 
-
+    #print('dfdkfjkdf')
 
 
 
@@ -346,13 +351,20 @@ if __name__=='__main__':
     vocab = ['C','H']
 
     observed_data = '233232322313311121113121112332322'
-    iter=2
+    iter=10
     for i in range(iter):
-        transition_count,occupancy_count = EM_step(transition_prob,emission_prob,observed_data,vocab)
-        Utransition_prob,Uemission_prob = Max_step(transition_count,occupancy_count,observed_data,vocab)
+        print('iteration-------->',i)
+        print('T,H')
+
+        transition_count, occupancy_count = EM_step(transition_prob,emission_prob,observed_data,vocab)
+        Utransition_prob, Uemission_prob = Max_step(transition_count,occupancy_count,observed_data,vocab)
         transition_prob = Utransition_prob
         emission_prob = Uemission_prob
-    -
+
+    print('iteration-------->',i+1)
+    print('T,H')
+    print('fdjfkdj')
+
 
 
 
