@@ -3,6 +3,7 @@ import itertools
 import sys
 from math import log
 import random
+import sys
 from decimal import Decimal
 
 
@@ -48,9 +49,9 @@ def bi_gram_generator(train_data, vocab, gram=1, weight=(1, 0, 0)):
     return count_dict[gram]
 
 
-def transition_probability():
+def transition_probability(filename):
     #######################################################
-    train_file = 'train.txt'
+    train_file = filename
     gram = 2
     weight = (1, 0)
     fp = open(train_file, 'r')
@@ -65,6 +66,27 @@ def transition_probability():
     #####################
 
     return transition_prob
+
+
+def transition_probability_argument(lines):
+    #######################################################
+
+    gram = 2
+    weight = (1, 0)
+
+    train_data = []
+    for line in lines:
+        train_data += [line[:-1].replace(' ', '_')]
+
+    vocab = 'a b c d e f g h i j k l m n o p q r s t u v w x y z'.split(' ')
+    vocab += ['_', '&']
+
+    transition_prob = bi_gram_generator(train_data, vocab, gram, weight=weight)
+    #####################
+
+    return transition_prob
+
+
 
 
 def forward_prop(transition_prob, emission_prob, observed_data, hidden_states):
@@ -373,15 +395,40 @@ if __name__ == '__main__':
     vocab = 'a b c d e f g h i j k l m n o p q r s t u v w x y z _'.split(' ')
     start_symbol = '*'
     end_symbol = '&'
-    observed_data_list = ['gjkgcbkycnjpkovryrbgkcrvsczbkyhkahqvykgjvjkcpekrbkjxdjayrpmkyhkmhkyhkyvrcukrpkbjfjvcukihpygb',
-                          'oqykcykujcbykhpjkejihavcyrakvjmrijkjxrbybkrpkjfjvzkiclhvkarfrurtcyrhpkhvkaquyqvjkrpkygjkshvue',
-                          'auqobkrpkvjajpykzjcvbkgcfjkwhqpekohvcbkbhkerwwraquykyhkpjmhyrcyjksrygkygcykicpzkbgqpkgrbkaurjpyb',
-                          'gjkbcrekygjkoqvjcqkiqbykgcfjkygjkerbdqyjkvjbhufjekozkwjovqcvzkrpkhvejvkyhkdjvwhvikygjkajpbqb',
-                          'oqykygjkdqouraryzkbqvvhqperpmkygjkejocaujkajvycrpuzkbjvfjekyhkwhaqbkckbdhyurmgykhpkyghbjkjwwhvyb']
 
+    ############################Reading data from command lines
+    chiper_lines = sys.stdin.readlines()
+    observed_data_list = []
+    for line in chiper_lines:
+        observed_data_list +=[line[:-1]]
+
+
+
+    # observed_data_list = ['gjkgcbkycnjpkovryrbgkcrvsczbkyhkahqvykgjvjkcpekrbkjxdjayrpmkyhkmhkyhkyvrcukrpkbjfjvcukihpygb',
+    #                       'oqykcykujcbykhpjkejihavcyrakvjmrijkjxrbybkrpkjfjvzkiclhvkarfrurtcyrhpkhvkaquyqvjkrpkygjkshvue',
+    #                       'auqobkrpkvjajpykzjcvbkgcfjkwhqpekohvcbkbhkerwwraquykyhkpjmhyrcyjksrygkygcykicpzkbgqpkgrbkaurjpyb',
+    #                       'gjkbcrekygjkoqvjcqkiqbykgcfjkygjkerbdqyjkvjbhufjekozkwjovqcvzkrpkhvejvkyhkdjvwhvikygjkajpbqb',
+    #                       'oqykygjkdqouraryzkbqvvhqperpmkygjkejocaujkajvycrpuzkbjvfjekyhkwhaqbkckbdhyurmgykhpkyghbjkjwwhvyb']
+    #
 
     ## This is a bigram Model.
-    transition_prob = transition_probability()
+    arguments=sys.argv
+    if len(arguments)>1:
+        filename = arguments[1]
+        iter = int(arguments[2])
+    else:
+        filename = 'train.txt'
+        iter = 2
+    transition_prob = transition_probability(filename)
+
+
+s
+
+
+
+
+
+    ############################
     emission_prob = defaultdict(lambda: defaultdict(float))
 
     ###initialization for emission Probability to Uniform distribution.
@@ -392,7 +439,7 @@ if __name__ == '__main__':
 
     ##################Testing values
 
-    iter = 50
+
     Uemission_prob = emission_prob
     for i in range(1,iter+1):
         output_list = []
@@ -413,6 +460,7 @@ if __name__ == '__main__':
 
         ####################################################
         print('epoch', i, 'logp(corpus)=',logp_corpus,'entropy=', round(entropy,3),'nonzeros=',non_zeros)
+        print('-------------------------------------------------------------------------------------------')
 
         for j in range(len(observed_data_list)):
             print(observed_data_list[j])
