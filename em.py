@@ -2,12 +2,13 @@ from collections import defaultdict
 import numpy as np
 from math import log,exp
 from decimal import Decimal
+import sys
 
 
 
 
 
-def alignments(epron,jpron):
+def alignments(epron,jpron,k=3):
     alings = []
 
     def all_alignments(alings,cur_e=0,start_j=0):
@@ -21,7 +22,7 @@ def alignments(epron,jpron):
 
 
         temp_align=[]
-        for j in range(start_j,start_j+5):
+        for j in range(start_j,start_j+k):
             if j< len(jpron):
 
                 cur_align = [cur_e]* (j-start_j+1)
@@ -152,13 +153,51 @@ def read_data(file_name):
     return train_data
 
 
+def read_data_arguments(lines):
+    train_data = []
+    count=0
+    ep_bin=True
+    for line in lines:
+        count+=1
+        if count%3==0:
+            train_data+=[(ep,jp)]
+            ep_bin=True
+            continue
+
+        if ep_bin==True:
+            ep = line[:-1]
+            ep_bin=False
+        else:
+            jp=line[:-1]
+            ep_bin=True
+
+    return train_data
 
 
 
 
+def Uniform_prob(train_data,alignments_dict):
+    align_prob =  defaultdict(lambda : defaultdict(float))
+    for i in range(len(train_data)):
+
+        epron = np.array(train_data[i][0].split())
+        jpron = np.array(train_data[i][1].split())
+
+        for k in alignments_dict[i]:
 
 
+            align_array=np.array(alignments_dict[i][k])
+            for j in range(len(epron)):
+                jp=' '.join(list(jpron[list(np.where(align_array==j)[0])]))
 
+                align_prob[epron[j]][jp] = 1
+
+    for key in align_prob:
+        normalize=sum(align_prob[key].values())
+        for key1 in align_prob[key]:
+            align_prob[key][key1] = align_prob[key][key1]/normalize
+
+    return align_prob
 
 
 
@@ -174,14 +213,22 @@ def read_data(file_name):
 
 if __name__=='__main__':
     file_name = 'epron-jpron.data'
-    iterations =15
+    iterations =2
 
 
     #train_data = [('T EH S T','T E S U T O')]
     #train_data = [('W AY N', 'W A I N')]
+    lines=sys.stdin.readlines()
+    arugments = sys.argv
+
+    if len(arugments)>1:
+         iterations=int(arugments[1])
+    else:
+        iterations = 5
 
 
-    train_data=read_data(file_name)
+
+    train_data=read_data_arguments(lines)
     #train_data =train_data
     #train_data = [('B IY', 'B I I')]
     ###initalization
@@ -195,15 +242,15 @@ if __name__=='__main__':
         for key in all_z[i]:
             fractional_counts[i][key]=1
 
-
+    align_prob = Uniform_prob(train_data,all_z)
 
 
 
     for i in range(iterations):
 
-        if i!=0:
-            corpus_prob = get_corpus_prob(align_prob, all_z, train_data)
-            print('iteration ', i, ' ----- corpus prob=', corpus_prob)
+        #if i!=0:
+        corpus_prob = get_corpus_prob(align_prob, all_z, train_data)
+        print('iteration ', i, ' ----- corpus prob=', corpus_prob,file=sys.stderr)
 
         align_prob=e_step(train_data,all_z,fractional_counts,i,soft=True)
 
@@ -211,13 +258,13 @@ if __name__=='__main__':
 
         count=0
         for key in align_prob:
-            print(key, '|->', end=' ')
+            print(key, '|->', end=' ',file=sys.stderr)
             for key1 in align_prob[key]:
                 if align_prob[key][key1]>0.001:
                     count+=1
-                    print(key1, ':', round(align_prob[key][key1],3), end=' ')
-            print('\n')
-        print('nonzeros =',count)
+                    print(key1, ':', round(align_prob[key][key1],3), end=' ',file=sys.stderr)
+            print('\n',file=sys.stderr)
+        print('nonzeros =',count,file=sys.stderr)
         ##########
         joint_prob = m_step(align_prob, all_z, train_data)
         fractional_counts=fractional_count_update(joint_prob,fractional_counts,train_data,align_prob)

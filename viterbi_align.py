@@ -1,5 +1,6 @@
 from collections import defaultdict
 import numpy as np
+import sys
 
 
 
@@ -100,6 +101,26 @@ def choose_best(all_z,align_prob,train_data):
 
     return best_z
 
+def read_data_arguments(lines):
+    train_data = []
+    count=0
+    ep_bin=True
+    for line in lines:
+        count+=1
+        if count%3==0:
+            train_data+=[(ep,jp)]
+            ep_bin=True
+            continue
+
+        if ep_bin==True:
+            ep = line[:-1]
+            ep_bin=False
+        else:
+            jp=line[:-1]
+            ep_bin=True
+
+    return train_data
+
 
 
 
@@ -107,10 +128,16 @@ def choose_best(all_z,align_prob,train_data):
 
 if __name__=='__main__':
 
-    file_name ='epron-jpron.data'
-    file_name1 = 'epron-jpron.probs'
+    # file_name ='epron-jpron.data'
+    # file_name1 = 'epron-jpron.probs'
+    arguments=sys.argv
+    if len(arguments)>1:
+        file_name1=arguments[1]
 
-    train_data = read_data(file_name)
+
+    lines = sys.stdin.readlines()
+
+    train_data = read_data_arguments(lines)
     align_prob = read_prob(file_name1)
 
 
