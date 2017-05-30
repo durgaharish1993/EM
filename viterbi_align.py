@@ -61,7 +61,7 @@ def read_data(file_name):
 
 
 def read_prob(file_name):
-    align_prob = defaultdict(lambda :defaultdict(float))
+    align_prob = defaultdict(lambda :defaultdict(lambda : 0.001))
     fp = open(file_name,'r')
     #EY : E E # 0.582
     for line in fp.readlines():
@@ -129,7 +129,7 @@ def read_data_arguments(lines):
 if __name__=='__main__':
 
     # file_name ='epron-jpron.data'
-    # file_name1 = 'epron-jpron.probs'
+    # file_name1 = 'epron-jpron_dynamic.probs'
     arguments=sys.argv
     if len(arguments)>1:
         file_name1=arguments[1]
@@ -138,8 +138,9 @@ if __name__=='__main__':
     lines = sys.stdin.readlines()
 
     train_data = read_data_arguments(lines)
+    #train_data = read_data(file_name)
     align_prob = read_prob(file_name1)
-
+    # train_data = [('S W EH T ER','S E E T A A')]
 
     all_z = {}
     for i in range(len(train_data)):
